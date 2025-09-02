@@ -11,7 +11,6 @@ Options :
         -p      -> You may specify up to 16 "pad" bytes to fill out the packet you send. This is useful for diagnosing data-dependent problems in a network. For example, “-p ff” will cause the sent packet to be filled with all ones.
         -r      -> Bypass the normal routing tables and send directly to a host on an attached network. If the host is not on a directly-attached network, an error is returned. This option can be used to ping a local host through an interface that has no route through it (e.g., after the interface was dropped by routed(8)).
         -s      -> Specifies the number of data bytes to be sent. The default is 56, which translates into 64 ICMP data bytes when combined with the 8 bytes of ICMP header data.
-        -T      -> Set num as the packet type of service (TOS).
         --ttl   -> Set N as the packet time-to-live.
 
 
@@ -26,28 +25,55 @@ Options :
     u_int32_t   padding_value;
     bool        bypass_rooting;
     int32_t     packet_size;
-    int32_t     type_of_service;
     int32_t     time_to_live;
 
 */
 
 #include "ft_ping.h"
+#include <ctype.h>
+#include <string.h>
+#include <sys/types.h>
 
 const char *help_message = "Try 'ping -?' for more information.";
 
+const char *usage_message = "Usage: ping [OPTION...] HOST ... \
+Send ICMP ECHO_REQUEST packets to network hosts.\
+\
+ Options valid for all request types:\
+\
+  -n                         do not resolve host addresses\
+  -r                         send directly to a host on an attached network\
+  --ttl=N                    specify N as time-to-live\
+  -v                         verbose output\
+  -w                         stop after N seconds\
+  -W                         number of seconds to wait for response\
+\
+ Options valid for --echo requests:\
+\
+  -f                         flood ping (root only)\
+  -l                         send NUMBER packets as fast as possible before\
+                             falling into normal mode of behavior (root only)\
+  -p                         fill ICMP packet with given pattern (hex)\
+  -s                         send NUMBER data octets\
+\
+  -?                         give this help list\
+\
+Options marked with (root only) are available only to superuser.";
+
 char *resolve_ip_address(char *domain);
+bool is_str_number(const char *str);
 
 void    set_default_options(t_options *options) {
     options->verbose = false;
+    options->flood = false;
     options->preload = -1;
     options->numeric_address_only = false;
     options->global_timeout = -1;
     options->packet_timeout = 10;
     options->padding = false;
-    options->padding_value = 0;
+    options->padding_len = 0;
     options->bypass_rooting = false;
     options->packet_size = 56;
-    options->type_of_service = 0;
     options->time_to_live = 64;
 }
 
@@ -85,7 +111,12 @@ int parse_args(int ac, char **av, t_options *options, t_data *data) {
         return (0);
     }
 
-    for (int i = 2; i < ac - 1; i++) {
+    for (int i = 1; i < ac; i++) {
+
+        if (strcmp(av[i], "-?") == 0) {
+            fprintf(stdout, "%s\n", usage_message);
+            return (2);
+        }
         
         if (strcmp(av[i], "-v") == 0) {
             options->verbose = true;
@@ -99,12 +130,122 @@ int parse_args(int ac, char **av, t_options *options, t_data *data) {
         else if (strcmp(av[i], "-r") == 0) {
             options->bypass_rooting = true;
         }
-        /*
-        else if (strcmp(av[i], "-r") == 0) {
-            options->bypass_rooting = true;
+        else if (strcmp(av[i], "-l") == 0) {
+            if (i == ac - 1) {
+                fprintf(stderr, "ft_ping: expected number after '-l' option, use -? for more information\n");
+                return (-1);
+            }
+            i++;
+            if (!is_str_number(av[i])) {
+                fprintf(stderr, "ft_ping: expected number after '-l' option, use -? for more information\n");
+                return (-1);
+            }
+            options->preload = atoi(av[i]);
         }
-        */
-        //TODO: Parse other options with option arguments
+        else if (strcmp(av[i], "-w") == 0) {
+            if (i == ac - 1) {
+                fprintf(stderr, "ft_ping: expected number after '-w' option, use -? for more information\n");
+                return (-1);
+            }
+            i++;
+            if (!is_str_number(av[i])) {
+                fprintf(stderr, "ft_ping: expected number after '-w' option, use -? for more information\n");
+                return (-1);
+            }
+            options->global_timeout = atoi(av[i]);
+        }
+        else if (strcmp(av[i], "-W") == 0) {
+            if (i == ac - 1) {
+                fprintf(stderr, "ft_ping: expected number after '-W' option, use -? for more information\n");
+                return (-1);
+            }
+            i++;
+            if (!is_str_number(av[i])) {
+                fprintf(stderr, "ft_ping: expected number after '-W' option, use -? for more information\n");
+                return (-1);
+            }
+            options->packet_timeout = atoi(av[i]);
+        }
+        else if (strcmp(av[i], "-p") == 0) {
+            if (i == ac - 1) {
+                fprintf(stderr, "ft_ping: expected hexa value (max 16 bytes) after '-p' option, use -? for more information\n");
+                return (-1);
+            }
+            i++;
+            size_t len = strlen(av[i]);
+            if (len > 32 || len % 2 != 0) {
+                fprintf(stderr, "ft_ping: expected even-length hexa string (max 16 bytes), use -? for more information\n");
+                return (-1);
+            }
+            for (size_t j = 0; j < len; ++j) {
+                if (!isxdigit(av[i][j])) {
+                    fprintf(stderr, "ft_ping: invalid hex digit in padding string\n");
+                    return (-1);
+                }
+            }
+
+            options->padding = true;
+            options->padding_len = len / 2;
+            
+            for (size_t j = 0; j < len; j += 2) {
+                char byte_str[3] = { av[i][j], av[i][j+1], '\0' };
+                options->padding_bytes[j/2] = (uint8_t)strtoul(byte_str, NULL, 16);
+            }
+        }
+        else if (strcmp(av[i], "-s") == 0) {
+            if (i == ac - 1) {
+                fprintf(stderr, "ft_ping: expected number after '-s' option, use -? for more information\n");
+                return (-1);
+            }
+            i++;
+            if (!is_str_number(av[i])) {
+                fprintf(stderr, "ft_ping: expected number after '-s' option, use -? for more information\n");
+                return (-1);
+            }
+            if (atoi(av[i]) > 56) {
+                fprintf(stderr, "ft_ping: max packet size is 56, use -? for more information\n");
+                return (-1);
+            }
+
+            options->packet_size = atoi(av[i]);
+        }
+        else if (strcmp(av[i], "--ttl") == 0) {
+            if (i == ac - 1) {
+                fprintf(stderr, "ft_ping: expected number after '--ttl' option, use -? for more information\n");
+                return (-1);
+            }
+            i++;
+            if (!is_str_number(av[i])) {
+                fprintf(stderr, "ft_ping: expected number after '--ttl' option, use -? for more information\n");
+                return (-1);
+            }
+
+            options->time_to_live = atoi(av[i]);
+        }
+        else {
+            if (av[i] == NULL) {
+                fprintf(stderr, "ft_ping: invalid target domain or IPv4 address\n%s\n", help_message);
+                return (-1);
+            }
+
+            struct in_addr ipv4;
+            int is_ipv4 = inet_pton(AF_INET, av[i], &ipv4);
+
+            if (is_ipv4 == 1) {
+                data->target_address = av[i];
+                data->target_domain_name = NULL;
+            } else if (is_ipv4 == 0) {
+                data->target_domain_name = av[i];
+                data->target_address = resolve_ip_address(av[i]);
+                if (data->target_address == NULL) {
+                    fprintf(stderr, "ft_ping: couldn't resolve IP address from given domain\n");
+                    return (-1);
+                }
+            } else {
+                fprintf(stderr, "ft_ping: invalid target domain or IPv4 address\n%s\n", help_message);
+                return (-1);
+            }
+        }
     }
 
     return (0);
@@ -130,4 +271,14 @@ char *resolve_ip_address(char *domain) {
     freeaddrinfo(res);
 
     return (strdup(ipstr));
+}
+
+bool is_str_number(const char *str) {
+    if (*str == '\0') return false;
+    while (*str) {
+        if (!isdigit(*str))
+            return false;
+        str++;
+    }
+    return true;
 }

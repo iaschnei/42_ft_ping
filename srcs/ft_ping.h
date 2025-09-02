@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <netdb.h>
+#include <ctype.h>
 #include <arpa/inet.h>
 
 
@@ -19,10 +20,10 @@ typedef struct s_options {
     int32_t     global_timeout;
     int32_t     packet_timeout;
     bool        padding;
-    u_int32_t   padding_value;
+    uint8_t     padding_bytes[16];
+    size_t      padding_len;
     bool        bypass_rooting;
     int32_t     packet_size;
-    int32_t     type_of_service;
     int32_t     time_to_live;
 } t_options;
 
@@ -32,5 +33,8 @@ typedef struct s_data {
     char    *target_domain_name;
 } t_data;
 
+
+void    set_default_options(t_options *options);
+int     parse_args(int ac, char **av, t_options *options, t_data *data);
 
 #endif
