@@ -8,6 +8,7 @@
 #include <string.h>
 #include <netdb.h>
 #include <ctype.h>
+#include <unistd.h>
 #include <arpa/inet.h>
 
 
@@ -32,6 +33,15 @@ typedef struct s_data {
     char    *target_address;
     char    *target_domain_name;
 } t_data;
+
+typedef struct s_icmp {
+    uint8_t type;
+    uint8_t code;
+    uint16_t checksum;
+    uint16_t id;
+    uint16_t sequence;
+    char data[];
+} t_icmp;
 
 
 void    set_default_options(t_options *options);
