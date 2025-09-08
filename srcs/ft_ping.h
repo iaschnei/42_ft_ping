@@ -9,7 +9,15 @@
 #include <netdb.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <signal.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
+#include <unistd.h>
+#include <netinet/ip_icmp.h>
+#include <sys/time.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <math.h>
 
 
 typedef struct s_options {
@@ -42,6 +50,15 @@ typedef struct s_icmp {
     uint16_t sequence;
     char data[];
 } t_icmp;
+
+typedef struct s_stats {
+    int packets_sent;
+    int packets_received;
+    long rtt_min;
+    long rtt_max;
+    long rtt_sum;
+    long rtt_sum_squared;
+} t_stats;
 
 
 void    set_default_options(t_options *options);

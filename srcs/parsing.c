@@ -36,29 +36,27 @@ Options :
 
 const char *help_message = "Try 'ping -?' for more information.";
 
-const char *usage_message = "Usage: ping [OPTION...] HOST ... \
-Send ICMP ECHO_REQUEST packets to network hosts.\
-\
- Options valid for all request types:\
-\
-  -n                         do not resolve host addresses\
-  -r                         send directly to a host on an attached network\
-  --ttl=N                    specify N as time-to-live\
-  -v                         verbose output\
-  -w                         stop after N seconds\
-  -W                         number of seconds to wait for response\
-\
- Options valid for --echo requests:\
-\
-  -f                         flood ping (root only)\
-  -l                         send NUMBER packets as fast as possible before\
-                             falling into normal mode of behavior (root only)\
-  -p                         fill ICMP packet with given pattern (hex)\
-  -s                         send NUMBER data octets\
-\
-  -?                         give this help list\
-\
-Options marked with (root only) are available only to superuser.";
+const char *usage_message = "Usage: ping [OPTION...] HOST ... \n\
+Send ICMP ECHO_REQUEST packets to network hosts.\n\
+\n\
+ Options valid for all request types:\n\
+\n\
+  -n                         do not resolve host addresses\n\
+  -r                         send directly to a host on an attached network\n\
+  --ttl=N                    specify N as time-to-live\n\
+  -v                         verbose output\n\
+  -w                         stop after N seconds\n\
+  -W                         number of seconds to wait for response\n\
+\n\
+ Options valid for --echo requests:\n\
+\n\
+  -f                         flood ping (root only)\n\
+  -l                         send NUMBER packets as fast as possible before\n\
+                             falling into normal mode of behavior (root only)\n\
+  -p                         fill ICMP packet with given pattern (hex)\n\
+  -s                         send NUMBER data octets\n\
+\n\
+  -?                         give this help list";
 
 char *resolve_ip_address(char *domain);
 bool is_str_number(const char *str);
@@ -85,9 +83,15 @@ int parse_args(int ac, char **av, t_options *options, t_data *data) {
     }
 
     if (ac == 2) {
+
         if (av[1] == NULL) {
             fprintf(stderr, "ft_ping: invalid target domain or IPv4 address\n%s\n", help_message);
             return (-1);
+        }
+
+        if (strcmp(av[1], "-?") == 0) {
+            fprintf(stdout, "%s\n", usage_message);
+            return (2);
         }
 
         struct in_addr ipv4;
