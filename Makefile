@@ -32,6 +32,16 @@ all: $(NAME)
 $(NAME): $(OBJS)
 	@$(CC) $(OBJS) -o $(NAME)
 	@echo "$(COLOR_GREEN) || Done !$(COLOR_END)"
+ifneq ($(shell id -u),0)
+	@echo "$(COLOR_RED) !! Warning: Run 'sudo make setuid' to allow non-root users to run $(NAME)$(COLOR_END)"
+endif
+
+setuid:
+	@echo "$(COLOR_PURP)Setting setuid root permissions on $(NAME)...$(COLOR_END)"
+	@chown root:root $(NAME)
+	@chmod u+s $(NAME)
+	@chmod go-w $(NAME)
+	@ls -l $(NAME)
 
 clean:
 	@rm -rf $(OBJS)

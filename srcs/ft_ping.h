@@ -54,10 +54,10 @@ typedef struct s_icmp {
 typedef struct s_stats {
     int packets_sent;
     int packets_received;
-    long rtt_min;
-    long rtt_max;
-    long rtt_sum;
-    long rtt_sum_squared;
+    double rtt_min;
+    double rtt_max;
+    double rtt_sum;
+    double rtt_sum_squared;
 } t_stats;
 
 

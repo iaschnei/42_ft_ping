@@ -9,9 +9,8 @@ Options :
         -w      -> Stop after N seconds of sending packets.
         -W      -> Number of seconds to wait for response
         -p      -> You may specify up to 16 "pad" bytes to fill out the packet you send. This is useful for diagnosing data-dependent problems in a network. For example, “-p ff” will cause the sent packet to be filled with all ones.
-        -r      -> Bypass the normal routing tables and send directly to a host on an attached network. If the host is not on a directly-attached network, an error is returned. This option can be used to ping a local host through an interface that has no route through it (e.g., after the interface was dropped by routed(8)).
         -s      -> Specifies the number of data bytes to be sent. The default is 56, which translates into 64 ICMP data bytes when combined with the 8 bytes of ICMP header data.
-        --ttl   -> Set N as the packet time-to-live.
+        --ttl   -> Set N as the packet time-to-live.  (each time the packet is transmitted to an element in the network, this number goes down. When it reaches 0, drop the packet)
 
 
 
@@ -39,17 +38,12 @@ const char *help_message = "Try 'ping -?' for more information.";
 const char *usage_message = "Usage: ping [OPTION...] HOST ... \n\
 Send ICMP ECHO_REQUEST packets to network hosts.\n\
 \n\
- Options valid for all request types:\n\
-\n\
   -n                         do not resolve host addresses\n\
   -r                         send directly to a host on an attached network\n\
   --ttl=N                    specify N as time-to-live\n\
   -v                         verbose output\n\
   -w                         stop after N seconds\n\
   -W                         number of seconds to wait for response\n\
-\n\
- Options valid for --echo requests:\n\
-\n\
   -f                         flood ping (root only)\n\
   -l                         send NUMBER packets as fast as possible before\n\
                              falling into normal mode of behavior (root only)\n\
@@ -64,10 +58,10 @@ bool is_str_number(const char *str);
 void    set_default_options(t_options *options) {
     options->verbose = false;
     options->flood = false;
-    options->preload = -1;
+    options->preload = 0;
     options->numeric_address_only = false;
     options->global_timeout = -1;
-    options->packet_timeout = 10;
+    options->packet_timeout = 1;
     options->padding = false;
     options->padding_len = 0;
     options->bypass_rooting = false;
